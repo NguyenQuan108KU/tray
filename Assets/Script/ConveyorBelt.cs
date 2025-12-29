@@ -65,19 +65,16 @@ public class ConveyorBelt : MonoBehaviour
     {
         if (items.Count == 0) return;
 
+        SortItems(); // 🔥 BẮT BUỘC
+
         Transform first = items[0];
 
-        // CỘT ĐI XUỐNG
         if (isDown && first.position.y < bottomLimit)
-        {
             RecycleItem(first, true);
-        }
-        // CỘT ĐI LÊN
         else if (!isDown && first.position.y > bottomLimit)
-        {
             RecycleItem(first, false);
-        }
     }
+
 
     void RecycleItem(Transform first, bool isDown)
     {

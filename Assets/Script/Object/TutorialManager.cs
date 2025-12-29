@@ -69,6 +69,7 @@ public class TutorialManager : MonoBehaviour
         if (pulsingTarget != null)
         {
             pulsingTarget.DOKill();
+            pulsingTarget.localRotation = Quaternion.identity;
             pulsingTarget.localScale = Vector3.one;
             pulsingTarget = null;
         }

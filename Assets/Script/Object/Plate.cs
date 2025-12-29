@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class Plate : MonoBehaviour
 {
-    public List<DragItem> items = new();
+    public List<DragItem> items = new List<DragItem>(); 
     public float fadeTime = 0.25f;
     public float scaleTime = 0.25f;
 

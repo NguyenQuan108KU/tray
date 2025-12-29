@@ -2,9 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditorInternal.VersionControl;
 using UnityEngine;
-using static UnityEditor.Progress;
 
 public class Tray : MonoBehaviour
 {
@@ -30,10 +28,15 @@ public class Tray : MonoBehaviour
     bool hasHandledEmpty = false;
     public Plate diskItem;
 
-    public List<Plate> disks = new();
+    public List<Plate> disks = new List<Plate>();
 
     // disk đang dùng
     private int currentDiskIndex = 0;
+
+    // NEW: flag while we are animating filling from disk
+    public bool isRefilling = false;
+    private int refillingCounter = 0;
+
     private void Start()
     {
         slots = GetComponentsInChildren<Slot>();
@@ -202,7 +205,7 @@ public class Tray : MonoBehaviour
         for (int i = 0; i < items.Count; i++)
         {
             var sr = items[i].GetComponent<SpriteRenderer>();
-            if (sr != null) sr.sortingOrder = i + 1;
+            if (sr != null) sr.sortingOrder = i + 3;
         }
 
         // safe: ensure we have an index 1
@@ -326,6 +329,7 @@ public class Tray : MonoBehaviour
                 item.transform.localScale = Vector3.one * 0.35f;
                 disk.AddItem(item.transform);
             }
+            // Immediately attempt refill from the CURRENT supply disk
             TryHandleAfterMatch();
         });
     }
@@ -464,54 +468,64 @@ public class Tray : MonoBehaviour
 
     public void RefillFromDisk(Plate diskItem)
     {
-        if (diskItem == null || diskItem.IsEmpty()) return;
+        if (diskItem == null || diskItem.IsEmpty())
+            return;
 
-        // 🔥 1. SORT ITEM TRÊN DISK (TRÁI → PHẢI)
-        var orderedItems = diskItem.items
+        // 1️⃣ Sort disk items theo X (trái → phải)
+        var diskItems = diskItem.items
             .OrderBy(i => i.transform.position.x)
             .ToList();
 
-        float moveTime = 0.38f;
-        float delayStep = 0.08f;
-        float scaleTime = 0.32f;
+        // 2️⃣ Sort slots theo X (trái → phải)
+        var orderedSlots = slots
+            .Where(s => s != null && s.anchor != null)
+            .OrderBy(s => s.anchor.position.x)
+            .ToList();
 
-        int index = 0;
+        float moveTime = 0.22f;   // ↓ từ 0.38
+        float scaleTime = 0.18f;   // ↓ từ 0.32
+        float delayStep = 0.04f;   // ↓ từ 0.08
+
         bool diskWillBeEmpty = false;
+        int animIndex = 0;
 
-        foreach (Slot slot in slots) // giữ nguyên thứ tự slot
+        // NEW: mark we're refilling so Slot.CanAcceptItem blocks incoming drags
+        isRefilling = true;
+        refillingCounter = 0;
+
+        // 3️⃣ Map theo vị trí X
+        foreach (DragItem item in diskItems)
         {
-            // fill only EMPTY slots
-            if (slot.currentItem != null) continue;
-            if (index >= orderedItems.Count) break;
-
-            DragItem item = orderedItems[index];
-            index++;
-
             if (item == null || item.transform == null)
                 continue;
 
+            // tìm slot trống có X gần nhất
+            Slot slot = FindBestSlotByX(orderedSlots, item.transform.position.x);
+            if (slot == null)
+                continue;
+
+            // prepare one animation -> increment counter
+            refillingCounter++;
+
             diskItem.RemoveItem(item);
             diskWillBeEmpty = diskItem.IsEmpty();
+
             item.transform.DOKill();
 
-
-            Vector3 startLocalScale = item.transform.localScale;
-
-            // set parent sớm – giữ world
+            Vector3 startScale = item.transform.localScale;
             item.transform.SetParent(slot.transform, true);
-            item.transform.localScale = startLocalScale;
-
-            int completed = 0;
+            item.transform.localScale = startScale;
 
             SpriteRenderer sr = item.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
                 Color c = sr.color;
-                c.a = 1f; // 255
+                c.a = 1f;
                 sr.color = c;
             }
 
-            float delay = (index - 1) * delayStep;
+            float delay = animIndex * delayStep;
+            animIndex++;
 
             Sequence seq = DOTween.Sequence();
             seq.AppendInterval(delay);
@@ -532,7 +546,22 @@ public class Tray : MonoBehaviour
 
             seq.OnComplete(() =>
             {
-                if (item == null || item.transform == null) return;
+                if (item == null || item.transform == null)
+                {
+                    // decrement counter even if item destroyed
+                    refillingCounter--;
+                    if (refillingCounter <= 0)
+                    {
+                        // finished all item animations
+                        isRefilling = false;
+                        currentDiskIndex++;
+                        Plate nextDisk = CurrentDisk;
+                        if (nextDisk != null)
+                            nextDisk.ShowItemsInListOrder();
+                    }
+                    return;
+                }
+
                 item.transform.localPosition = Vector3.zero;
                 slot.SetItem(item);
                 item.startScale = Vector3.one; // hoặc item.transform.localScale
@@ -540,15 +569,52 @@ public class Tray : MonoBehaviour
                 {
                     diskItem.FadeAndDestroy();
                 }
+
+                // animation finished for this item
+                refillingCounter--;
+                if (refillingCounter <= 0)
+                {
+                    // finished all item animations
+                    isRefilling = false;
+                    currentDiskIndex++;
+                    Plate nextDisk = CurrentDisk;
+                    if (nextDisk != null)
+                        nextDisk.ShowItemsInListOrder();
+                }
             });
         }
-        currentDiskIndex++;
-        Plate nextDisk = CurrentDisk;
-        if (nextDisk != null)
+
+        // If no animations were started, ensure state updates and advance disk index
+        if (refillingCounter == 0)
         {
-            nextDisk.ShowItemsInListOrder();
+            isRefilling = false;
+            currentDiskIndex++;
+            Plate nextDisk = CurrentDisk;
+            if (nextDisk != null)
+                nextDisk.ShowItemsInListOrder();
         }
     }
+
+    Slot FindBestSlotByX(List<Slot> orderedSlots, float itemX)
+    {
+        Slot best = null;
+        float bestDist = float.MaxValue;
+
+        foreach (Slot s in orderedSlots)
+        {
+            if (s.currentItem != null) continue;
+
+            float dx = Mathf.Abs(s.anchor.position.x - itemX);
+            if (dx < bestDist)
+            {
+                bestDist = dx;
+                best = s;
+            }
+        }
+
+        return best;
+    }
+
     public Plate CurrentDisk
     {
         get
@@ -574,12 +640,36 @@ public class Tray : MonoBehaviour
             CloseTray(); // ✅ hết disk thật sự
         }
     }
+    public void NotifySlotChangedTray()
+    {
+        // còn item → reset cờ
+        if (HasAnyItemInSlot())
+        {
+            hasHandledEmpty = false;
+            return;
+        }
 
+        // tray trống thật sự
+        if (!hasHandledEmpty)
+        {
+            hasHandledEmpty = true;
+            FillTray();
+        }
+    }
+    public void FillTray()
+    {
+        Plate disk = CurrentDisk;
+        if (disk != null)
+        {
+            RefillFromDisk(disk);
+        }
+       
+    }
     // Called by DragItem after an item leaves a tray (keeps behavior explicit)
     public void CheckAfterItemRemoved()
     {
         // reuse existing behavior
-        NotifySlotChanged();
+        NotifySlotChangedTray();
     }
 
     private void OnTriggerEnter2D(Collider2D other)

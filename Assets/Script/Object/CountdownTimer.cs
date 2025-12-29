@@ -202,6 +202,25 @@ public class CountdownTimer : MonoBehaviour
             GameManager.Instance.EndGame();
         }
     }
+    public void StopCountdown()
+    {
+        // dừng coroutine đếm giờ
+        if (countdownCo != null)
+        {
+            StopCoroutine(countdownCo);
+            countdownCo = null;
+        }
+
+        // dừng blink nền
+        StopBackgroundBlink();
+
+        // reset trạng thái nếu cần
+        hasStarted = false;
+
+        // optional: trả màu & scale về ban đầu
+        timerText.color = originalColor;
+        timerText.transform.localScale = originalScale;
+    }
 
 
 }

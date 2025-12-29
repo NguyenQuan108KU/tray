@@ -115,6 +115,7 @@ public class ProgressBrain : MonoBehaviour
     IEnumerator ActiveWin()
     {
         yield return new WaitForSeconds(1f);
-        endcartWin.SetActive(true);
+        endcartWin.GetComponent<EndCart_Lose>()?.Show();
+        CountdownTimer.instance.StopCountdown();
     }
 }
