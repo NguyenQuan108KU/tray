@@ -182,7 +182,7 @@ public class Tray : MonoBehaviour
             Slot s = parent.GetComponent<Slot>();
             if (s != null)
             {
-                s.ClearItem(); // mark the slot empty
+                s.currentItem = null; // mark the slot empty
             }
         }
 
@@ -503,6 +503,7 @@ public class Tray : MonoBehaviour
             Slot slot = FindBestSlotByX(orderedSlots, item.transform.position.x);
             if (slot == null)
                 continue;
+            slot.Reserve();
 
             // prepare one animation -> increment counter
             refillingCounter++;

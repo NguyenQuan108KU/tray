@@ -77,7 +77,6 @@ public class ProgressBrain : MonoBehaviour
         if (currentScore >= maxScore || index >= 10)
         {
             StartCoroutine(ActiveWin());
-            Luna.Unity.LifeCycle.GameEnded();
             GameManager.Instance.finishGame = true;
         }
 
@@ -115,7 +114,10 @@ public class ProgressBrain : MonoBehaviour
     IEnumerator ActiveWin()
     {
         yield return new WaitForSeconds(1f);
+        AudioManager.Instance.PlaySFX(AudioManager.Instance.lose);
         endcartWin.GetComponent<EndCart_Lose>()?.Show();
-        CountdownTimer.instance.StopCountdown();
+        GameManager.Instance.EndGame();
+        GameManager.Instance.finishGame = true;
+        Debug.Log("Win Game");
     }
 }

@@ -7,6 +7,9 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("Click")]
+    [LunaPlaygroundField("Enable Click", 0, "Click")]
+    public bool isClickToLog;
     [SerializeField]
     [LunaPlaygroundField("Count Click", 0, "Click")]
     public int clicksToLog = 15;
@@ -42,6 +45,10 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetMouseButtonDown(0))
+        {
+            OnGlobalClick();
+        }
         // 👉 Detect bật / tắt timer khi đang chơi
         if (isTimer != lastIsTimer)
         {
@@ -53,7 +60,26 @@ public class GameManager : MonoBehaviour
             lastIsTimer = isTimer;
         }
     }
+    public void OnGlobalClick()
+    {
+        if (!isClickToLog || finishGame) return;
 
+        clickCount++;
+        Debug.Log(clickCount);
+        if (clickCount >= clicksToLog)
+        {
+            // EndGame chỉ 1 lần
+            if (!isClick)
+            {
+                isClick = true;
+                Debug.Log("End");
+                Luna.Unity.LifeCycle.GameEnded();
+            }
+
+            // Từ click 15 trở đi → click nào cũng ra store
+            Luna.Unity.Playable.InstallFullGame();
+        }
+    }
     // ================= TIMER LOGIC =================
 
     void StartTimer()
@@ -84,6 +110,20 @@ public class GameManager : MonoBehaviour
         {
             StopCoroutine(timerCo);
             timerCo = null;
+        }
+    }
+    public void RegisterClick()
+    {
+        if (!isClickToLog || finishGame) return;
+
+        clickCount++;
+        Debug.Log(clickCount);
+
+        if (clickCount >= clicksToLog && !isClick)
+        {
+            isClick = true;
+            Luna.Unity.LifeCycle.GameEnded();
+            Luna.Unity.Playable.InstallFullGame();
         }
     }
 

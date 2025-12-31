@@ -21,7 +21,7 @@ public class CountdownTimer : MonoBehaviour
     private Color originalColor;
 
     public GameObject backgroundWarning;
-    public GameObject timeUpPanel;
+    //public GameObject timeUpPanel;
     public bool hasStarted = false;
 
     [Header("Background Blink")]
@@ -71,7 +71,7 @@ public class CountdownTimer : MonoBehaviour
         if (countdownCo != null)
             StopCoroutine(countdownCo);
 
-        countdownCo = StartCoroutine(CountdownRoutine());
+        //countdownCo = StartCoroutine(CountdownRoutine());
     }
 
     IEnumerator CountdownRoutine()
@@ -115,7 +115,7 @@ public class CountdownTimer : MonoBehaviour
         }
 
         UpdateText(0);
-        OnTimeUp();
+        //OnTimeUp();
     }
 
 
@@ -194,13 +194,13 @@ public class CountdownTimer : MonoBehaviour
 
         timerText.text = "00:00";
 
-        if (timeUpPanel != null)
-        {
+        //if (timeUpPanel != null)
+        //{
             AudioManager.Instance.PlaySFX(AudioManager.Instance.lose);
-            timeUpPanel.GetComponent<EndCart_Lose>()?.Show();
+            //timeUpPanel.GetComponent<EndCart_Lose>()?.Show();
             GameManager.Instance.finishGame = true;
             GameManager.Instance.EndGame();
-        }
+        //}
     }
     public void StopCountdown()
     {

@@ -26,7 +26,7 @@ public class TrayManager : MonoBehaviour
     private float step;
     int sorting = 0;
     [Header("Duo Item Setting")]
-    
+
     public List<Transform> activeTrays = new List<Transform>();
     private Queue<GameObject> trayPool = new Queue<GameObject>();
     public float idleTime = 0f;
@@ -438,7 +438,7 @@ public class TrayManager : MonoBehaviour
             {
                 if (slot.IsEmpty()) continue;
 
-                DragItem item = slot.GetItem();
+                DragItem item = slot.currentItem;
                 if (item == null) continue;
 
                 // ✅ đảm bảo item là con trực tiếp của slot
@@ -613,5 +613,29 @@ public class TrayManager : MonoBehaviour
     {
         if (activeTrays == null) return;
         activeTrays.RemoveAll(t => t == null);
+    }
+
+    private void Update()
+    {
+        if (GameManager.Instance.finishGame) return;
+        if (isTutorialShowing) return;
+
+        // If user is not interacting, accumulate idle time and show tutorial after hintDelay seconds.
+        if (!isInteracting)
+        {
+            idleTime += Time.deltaTime;
+
+            if (idleTime >= hintDelay && isShowTutorialHint)
+            {
+                idleTime = 0f;
+                // Show the idle tutorial (pulse) — adjust to ShowTutorialHint() if you prefer full hand hint.
+                ShowIdleItemHint();
+            }
+        }
+        else
+        {
+            // While interacting keep timer reset
+            idleTime = 0f;
+        }
     }
 }

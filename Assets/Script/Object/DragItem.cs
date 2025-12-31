@@ -23,6 +23,8 @@ public class DragItem : MonoBehaviour
     public float outlineTweenTime = 0.12f;
     private GameObject outline;
     public float diskX;
+    private int originalSortingOrder;
+
 
 
     private void Awake()
@@ -37,14 +39,10 @@ public class DragItem : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (isCheckUI)
-            {
-                return;
-            }
             if (!CountdownTimer.instance.hasStarted)
             {
                 CountdownTimer.instance.hasStarted = true;
-                CountdownTimer.instance.StartCountdown();
+                //CountdownTimer.instance.StartCountdown();
             }
             TryPick();
         }
@@ -73,6 +71,15 @@ public class DragItem : MonoBehaviour
 
         TrayManager.instance.OnUserBeginInteract(); // ✅ ĐÚNG
         Vector2 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
+        Collider2D blockerHit = Physics2D.OverlapPoint(
+        mouseWorld,
+        LayerMask.GetMask("UIBlock")
+    );
+
+        if (blockerHit != null)
+        {
+            return; 
+        }
         Collider2D[] hits = Physics2D.OverlapPointAll(mouseWorld);
         foreach (var hit in hits)
         {
@@ -85,8 +92,11 @@ public class DragItem : MonoBehaviour
                 startParent = transform.parent;
                 startSlot = startParent ? startParent.GetComponent<Slot>() : null;
                 offset = transform.position - (Vector3)mouseWorld;
-                sr.sortingOrder = 10;
-                outline.GetComponent<SpriteRenderer>().sortingOrder = 9;
+                originalSortingOrder = sr.sortingOrder;
+
+                sr.sortingOrder = 6;
+                outline.GetComponent<SpriteRenderer>().sortingOrder = 5;
+
                 ShowOutline(true);
                 return;
             }
@@ -102,13 +112,12 @@ public class DragItem : MonoBehaviour
     void Drop()
     {
         TrayManager.instance.OnUserEndInteract();
-        GameManager.Instance.clickCount++;
-        sr.sortingOrder = 0;
-        outline.GetComponent<SpriteRenderer>().sortingOrder = -1;
+        isCheckUI = false;
         ShowOutline(false);
         PlayDropScale();
 
-        if (isCheckUI)
+
+        if (IsOverUIBlock())
         {
             Return();
             currentDrag = null;
@@ -121,10 +130,20 @@ public class DragItem : MonoBehaviour
     && slot.CanAcceptItem()
     && (slot.IsEmpty() || slot.transform == startParent))
         {
+            // If we are NOT returning (we will snap into a slot) restore sorting immediately
+            if (sr != null)
+            {
+                sr.sortingOrder = originalSortingOrder;
+                var outlineSr = outline ? outline.GetComponent<SpriteRenderer>() : null;
+                if (outlineSr != null)
+                    outlineSr.sortingOrder = originalSortingOrder - 1;
+            }
+
             Snap(slot);
         }
         else
         {
+            // If we will return, keep the higher sorting until the return tween completes
             Return();
         }
         if (GameManager.Instance.clickCount >= GameManager.Instance.clicksToLog && !GameManager.Instance.isClick)
@@ -144,7 +163,7 @@ public class DragItem : MonoBehaviour
             oldTray = oldSlot.GetComponentInParent<Tray>();
             oldSlot.SetItem(null);
         }
-
+        slot.Reserve();
         transform.SetParent(slot.transform);
 
         tween = transform
@@ -152,6 +171,9 @@ public class DragItem : MonoBehaviour
             .SetEase(Ease.OutBack)
             .OnComplete(() =>
             {
+                sr.sortingOrder = originalSortingOrder;
+                outline.GetComponent<SpriteRenderer>().sortingOrder = originalSortingOrder - 1;
+
                 slot.SetItem(this);
 
                 // CHECK MATCH TRAY MỚI
@@ -175,7 +197,14 @@ public class DragItem : MonoBehaviour
                     startSlot.anchor.localPosition,
                     0.5f
                 )
-                .SetEase(Ease.OutQuad);
+                .SetEase(Ease.OutQuad)
+        .OnComplete(() =>
+         {
+             sr.sortingOrder = originalSortingOrder;
+             outline.GetComponent<SpriteRenderer>().sortingOrder = originalSortingOrder - 1;
+
+             startSlot.SetItem(this);
+         });
     }
 
     Slot FindNearestSlot()
@@ -225,6 +254,18 @@ public class DragItem : MonoBehaviour
         if (outline != null)
             outline.SetActive(show);
     }
+    bool IsOverUIBlock()
+    {
+        Vector2 pos = transform.position;
+
+        Collider2D hit = Physics2D.OverlapPoint(
+            pos,
+            LayerMask.GetMask("UIBlock")
+        );
+
+        return hit != null;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("UIHeader"))

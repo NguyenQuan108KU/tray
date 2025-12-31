@@ -5,6 +5,7 @@ public class Slot : MonoBehaviour
     public Transform anchor;
     public DragItem currentItem;
     public Tray tray;
+    private bool isReserved;
 
     private void Awake()
     {
@@ -52,8 +53,17 @@ public class Slot : MonoBehaviour
     public void SetItem(DragItem item)
     {
         currentItem = item;
+        isReserved = false;
+    }
+    public void Reserve()
+    {
+        isReserved = true;
     }
 
+    public void Release()
+    {
+        isReserved = false;
+    }
     public void SetItemDisk(DragItem item)
     {
         currentItem = item;
@@ -61,15 +71,4 @@ public class Slot : MonoBehaviour
         item.transform.position = anchor.position;
     }
 
-    // 🔥 LẤY ITEM ĐÚNG (KHÔNG BẮT NHẦM ANCHOR)
-    public DragItem GetItem()
-    {
-        return currentItem;
-    }
-
-    // 🔥 GỌI KHI ITEM BỊ DESTROY (MATCH)
-    public void ClearItem()
-    {
-        currentItem = null;
-    }
 }

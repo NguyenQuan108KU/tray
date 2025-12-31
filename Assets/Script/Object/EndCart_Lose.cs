@@ -56,7 +56,9 @@ public class EndCart_Lose : MonoBehaviour
     {
         gameObject.SetActive(true);
 
-        DOTween.KillAll();
+        // Do NOT kill all tweens globally here. That kills tray/disk tweens and prevents their OnComplete callbacks.
+        // DOTween.KillAll(); // removed
+
         buttonPulse?.Kill();
 
         InitState();
