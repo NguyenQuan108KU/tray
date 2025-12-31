@@ -42,7 +42,6 @@ public class DragItem : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             TryPick();
-            AudioManager.Instance.PlaySFX(AudioManager.Instance.drag);
         }
 
         if (Input.GetMouseButton(0) && currentDrag == this)
@@ -53,13 +52,22 @@ public class DragItem : MonoBehaviour
         if (Input.GetMouseButtonUp(0) && currentDrag == this)
         {
             Drop();
+            TrayManager.instance.OnUserEndInteract();
             AudioManager.Instance.PlaySFX(AudioManager.Instance.drog);
         }
+
     }
 
     void TryPick()
     {
-        TrayManager.instance.NotifyUserInteraction();
+        if (!GameManager.instance.startTimer)
+        {
+            CountdownTimer.instance.StartCountdown();
+            GameManager.instance.startTimer = true;
+        }
+        if (GameManager.instance.finishGame) return;
+        if(!GameManager.instance.startGame) return;
+        TrayManager.instance.OnUserBeginInteract();
         Vector2 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
 
         Collider2D[] hits = Physics2D.OverlapPointAll(mouseWorld);
@@ -91,7 +99,7 @@ public class DragItem : MonoBehaviour
     }
     void Drop()
     {
-        sr.sortingOrder = 0;
+        sr.sortingOrder = 1;
         outline.GetComponent<SpriteRenderer>().sortingOrder = -1;
         currentDrag = null;
         ShowOutline(false);

@@ -22,16 +22,17 @@ public class TrayManager : MonoBehaviour
     private float trayHeight;
     private float step;
     int sorting = 0;
+    public bool canCountIdle = false;
+
 
     // allow adjusting how far above the visible stack new trays are spawned
     [Header("Spawn Settings")] 
-    [Tooltip("Multiplier applied to 'step' when computing spawn Y. Lower than 1 spawns trays closer (lower).")]
     public float spawnHeightMultiplier = 1f;
 
     [Header("Tutorial")]
     public bool isFirstTutorial = true;
-    public float tutorialDelay = 3f;
-
+    public float tutorialDelay = 4f;
+    
     private float idleTimer;
     private bool tutorialEnabled = true;
 
@@ -55,7 +56,8 @@ public class TrayManager : MonoBehaviour
     }
     void Update()
     {
-        if (!tutorialEnabled) return;
+        if (!canCountIdle) return;
+        if (tutorialTriggered) return; // ⬅️ CHỐT 1 LẦN
         if (TutorialManager.instance.IsShowing) return;
 
         idleTimer += Time.deltaTime;
@@ -64,10 +66,11 @@ public class TrayManager : MonoBehaviour
 
         if (ShowTutorial())
         {
-            idleTimer = 0f;          // 🔴 CỰC KỲ QUAN TRỌNG
+            idleTimer = 0f;
             tutorialTriggered = true;
         }
     }
+
 
 
     bool ShowTutorial()
@@ -87,7 +90,6 @@ public class TrayManager : MonoBehaviour
                 }
             }
         }
-
         // ===== 2. RANDOM TUTORIAL =====
         var data = GetRandomValidMove();
         if (!data.HasValue) return false;
@@ -98,6 +100,21 @@ public class TrayManager : MonoBehaviour
         );
         return true;
     }
+    public void OnUserBeginInteract()
+    {
+        canCountIdle = false;
+        idleTimer = 0f;
+
+        if (TutorialManager.instance.IsShowing)
+            TutorialManager.instance.HideHint();
+    }
+
+    public void OnUserEndInteract()
+    {
+        idleTimer = 0f;
+        canCountIdle = true; // ⬅️ CHỈ TỪ LÚC NHẢ CHUỘT MỚI ĐẾM
+    }
+
     (DragItem item, Slot fromSlot, Slot toSlot)? GetRandomValidMove()
     {
         List<Tray> trays = new List<Tray>();
@@ -181,10 +198,13 @@ public class TrayManager : MonoBehaviour
 
         CacheSize();
         AlignInstant();
+        ShowTutorial();
         // initial attempt; ignore result
+    }
+    public void StartTut()
+    {
         ShowTutorial();
     }
-
     void InitPool()
     {
         if (listTray == null) return;
@@ -240,7 +260,6 @@ public class TrayManager : MonoBehaviour
         if (sr != null) sr.sortingOrder = sorting--;
 
         float startY = (activeTrays.Count) * step * 0.5f;
-        // apply multiplier so designer can lower spawn position by setting spawnHeightMultiplier < 1
         float spawnY = startY + step * spawnHeightMultiplier;
 
         tray.transform.localPosition = new Vector3(0, spawnY, 0);
@@ -274,6 +293,11 @@ public class TrayManager : MonoBehaviour
         // Only create tween if object still exists at this moment
         if (IsAlive(completedTray))
         {
+            seq.AppendCallback(() =>
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.wood);
+            });
+
             seq.Append(
                 completedTray.DOScale(0f, shrinkTime)
                     .SetEase(Ease.InBack)

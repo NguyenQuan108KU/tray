@@ -33,6 +33,8 @@ public class CountdownTimer : MonoBehaviour
     private Image bgImage;
     private Color bgOriginalColor;
 
+    public GameObject ECLose;
+
 
     private void Awake()
     {
@@ -60,7 +62,7 @@ public class CountdownTimer : MonoBehaviour
             backgroundWarning.SetActive(false);
         }
 
-        StartCountdown();
+        
     }
 
     public void StartCountdown()
@@ -78,7 +80,6 @@ public class CountdownTimer : MonoBehaviour
     {
         int timeLeft = startSeconds;
 
-        // ensure hidden at start
         if (backgroundWarning != null)
             backgroundWarning.SetActive(false);
 
@@ -86,10 +87,9 @@ public class CountdownTimer : MonoBehaviour
         {
             UpdateText(timeLeft);
 
-            // 🔊 play warning behavior when in warning period
             if (timeLeft <= warningTime)
             {
-                //AudioManager.Instance.PlaySFX(AudioManager.Instance.warningTick);
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.warningTick);
 
                 timerText.color = warningColor;
 
@@ -197,7 +197,12 @@ public class CountdownTimer : MonoBehaviour
         if (timeUpPanel != null)
         {
             AudioManager.Instance.PlaySFX(AudioManager.Instance.lose);
-            //timeUpPanel.GetComponent<EndCart_Lose>()?.Show();
+            GameManager.instance.finishGame = true;
+            ECLose.GetComponent<EndCart_Lose>()?.Show();
+            if(GameManager.instance.isTimer)
+            {
+                GameManager.instance.EndGame();
+            }
             //GameManager.Instance.finishGame = true;
             //GameManager.Instance.EndGame();
         }
@@ -221,6 +226,5 @@ public class CountdownTimer : MonoBehaviour
         timerText.color = originalColor;
         timerText.transform.localScale = originalScale;
     }
-
 
 }

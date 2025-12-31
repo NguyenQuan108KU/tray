@@ -7,15 +7,13 @@ public class PackManager : MonoBehaviour
 {
     public static PackManager instance;
 
-    [Header("Pack Slots (scene)")]
-    public Transform packRoot; // chứa 4 pack slot
+    [Header("Pack Slots")]
+    public Transform packRoot;
 
-    [Header("Pack Prefabs Queue")]
-    public List<PackTarget> packPrefabs; // danh sách pack thay thế
+    [Header("Pack Prefabs (1 prefab / type)")]
+    public List<PackTarget> packPrefabs;
 
     public List<PackTarget> activePacks = new List<PackTarget>();
-
-    int prefabIndex = 0;
 
     void Awake()
     {
@@ -24,11 +22,8 @@ public class PackManager : MonoBehaviour
 
     void Start()
     {
-        // Lấy pack sẵn trong scene
-        activePacks.Clear();
-        activePacks.AddRange(packRoot.GetComponentsInChildren<PackTarget>());
+        activePacks = packRoot.GetComponentsInChildren<PackTarget>().ToList();
 
-        // Gán slotIndex theo thứ tự
         for (int i = 0; i < activePacks.Count; i++)
         {
             activePacks[i].slotIndex = i;
@@ -42,33 +37,32 @@ public class PackManager : MonoBehaviour
         );
     }
 
+    /// Được gọi khi pack hoàn thành
     public void OnPackFilled(PackTarget pack)
     {
-        int slot = pack.slotIndex;
+        int slotIndex = pack.slotIndex;
         Vector3 slotPos = pack.transform.position;
+        ItemType type = pack.packType;
 
         pack.FlyUp(() =>
         {
             activePacks.Remove(pack);
             Destroy(pack.gameObject);
 
-            SpawnNextPack(slot, slotPos);
+            SpawnSameTypePack(type, slotIndex, slotPos);
         });
     }
 
-    void SpawnNextPack(int slotIndex, Vector3 slotPos)
+    void SpawnSameTypePack(ItemType type, int slotIndex, Vector3 slotPos)
     {
-        if (prefabIndex >= packPrefabs.Count)
-            return;
-
+        PackTarget prefab = packPrefabs
+            .FirstOrDefault(p => p.packType == type);
         PackTarget newPack = Instantiate(
-            packPrefabs[prefabIndex],
+            prefab,
             slotPos + Vector3.up * 6f,
             Quaternion.identity,
             packRoot
         );
-
-        prefabIndex++;
 
         newPack.slotIndex = slotIndex;
         activePacks.Add(newPack);

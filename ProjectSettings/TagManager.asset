@@ -48,6 +48,9 @@ TagManager:
   - name: Object
     uniqueID: 1595271697
     locked: 0
+  - name: Tray
+    uniqueID: 2119679405
+    locked: 0
   - name: Item
     uniqueID: 477834457
     locked: 0

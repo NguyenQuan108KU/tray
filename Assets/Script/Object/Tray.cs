@@ -2,6 +2,7 @@
 using DG.Tweening;
 using System.Linq;
 using System.Collections.Generic;
+using TMPro;
 
 public class Tray : MonoBehaviour
 {
@@ -45,12 +46,13 @@ public class Tray : MonoBehaviour
 
             if (targetPack != null)
             {
+                GameManager.instance.AddPoint(1);
                 MoveToPackLikeDisk(matchedItems, targetPack);
             }
-            else
-            {
-                MoveToCenter(matchedItems);
-            }
+            //else
+            //{
+            //    MoveToCenter(matchedItems);
+            //}
 
 
             return; // chỉ xử lý 1 match mỗi lần
@@ -65,7 +67,7 @@ public class Tray : MonoBehaviour
 
     void MoveToPackLikeDisk(List<DragItem> items, PackTarget pack)
     {
-        if (items == null || items.Count < 3) return;
+        if (items == null || items.Count < 5) return;
         if (pack == null || pack.attachPoint == null) return;
 
         Transform packAttach = pack.attachPoint;
@@ -77,45 +79,44 @@ public class Tray : MonoBehaviour
             if (sr != null) sr.sortingOrder = i;
         }
 
-        // 1️⃣ chọn tâm
         DragItem center = items[2];
         Vector3 centerPos = center.transform.position;
 
         float startX = -(items.Count - 1) * spacing * 0.5f;
+
         Sequence gatherSeq = DOTween.Sequence();
 
-        // 2️⃣ chụm item
+        // 1️⃣ gom lại
         for (int i = 0; i < items.Count; i++)
         {
-            var item = items[i];
-            if (!IsValidForTween(item)) continue;
+            DragItem item = items[i];
+            if (item == null) continue;
 
-            Vector3 target =
+            Vector3 targetPos =
                 centerPos + new Vector3(startX + i * spacing, 0, 0);
 
             gatherSeq.Join(
-                item.transform.DOMove(target, moveTime)
+                item.transform.DOMove(targetPos, moveTime)
                     .SetEase(Ease.OutBack)
                     .SetLink(item.gameObject)
             );
         }
 
-        // 3️⃣ bay vào pack
+        // 2️⃣ bay vào pack
         gatherSeq.OnComplete(() =>
         {
-            float spacingRatio = 0.3f;
-            Vector3 targetScale = Vector3.one * 0.35f;
+            int finishedCount = 0;
+            int total = items.Count;
 
-            Sequence master = DOTween.Sequence();
-
-            foreach (var item in items)
+            for (int i = 0; i < items.Count; i++)
             {
-                if (!IsValidForTween(item)) continue;
+                DragItem item = items[i];
+                if (item == null) continue;
 
                 item.transform.DOKill();
 
                 Vector3 offset = item.transform.position - centerPos;
-                Vector3 targetPos = packAttach.position + offset * spacingRatio;
+                Vector3 targetPos = packAttach.position + offset * 0.3f;
 
                 Sequence seq = DOTween.Sequence();
 
@@ -129,26 +130,27 @@ public class Tray : MonoBehaviour
                 );
 
                 seq.Join(
-                    item.transform.DOScale(targetScale, itemToDiskTime)
+                    item.transform.DOScale(diskItemScale, itemToDiskTime)
                 );
 
                 seq.OnComplete(() =>
                 {
                     if (item != null)
                         Destroy(item.gameObject);
+
+                    finishedCount++;
+
+                    // ✅ CHỈ TỚI ITEM CUỐI CÙNG
+                    if (finishedCount == total)
+                    {
+                        Disappear(); // tray sập
+                        pack.AddItems(total);
+                    }
                 });
-
-                master.Join(seq);
             }
-
-            // 4️⃣ báo pack đã nhận item
-            master.OnComplete(() =>
-            {
-                pack.AddItems(items.Count); // hoặc pack.OnItemsArrived(...)
-                Disappear();
-            });
         });
     }
+
 
     void MoveToCenter(List<DragItem> items)
     {

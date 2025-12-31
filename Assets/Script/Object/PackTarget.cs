@@ -22,7 +22,11 @@ public class PackTarget : MonoBehaviour
 
         if (currentCount >= capacity)
         {
+            currentCount = capacity; // khóa cứng
             isFull = true;
+
+            enabled = false;
+
             PackManager.instance.OnPackFilled(this);
         }
         else
@@ -35,23 +39,21 @@ public class PackTarget : MonoBehaviour
     {
         transform.DOPunchScale(Vector3.one * 0.03f, 0.25f, 1, 0.7f);
     }
-
     public void FlyUp(System.Action onComplete)
     {
-        transform.DOKill(); // tránh chồng tween
+        if (!this || !gameObject) return;
+
+        transform.DOKill();
 
         Sequence seq = DOTween.Sequence();
         seq.SetTarget(transform);
 
-        // 1️⃣ Nhún
         seq.Append(
             transform.DOPunchScale(Vector3.one * 0.03f, 0.25f, 1, 0.7f)
         );
 
-        // 2️⃣ Đợi 0.2s
         seq.AppendInterval(0.2f);
 
-        // 3️⃣ Bay lên
         seq.Append(
             transform.DOMoveY(transform.position.y + 6f, 0.8f)
                 .SetEase(Ease.InQuad)
@@ -59,5 +61,6 @@ public class PackTarget : MonoBehaviour
 
         seq.OnComplete(() => onComplete?.Invoke());
     }
+
 
 }

@@ -38,10 +38,25 @@ public class EndCart_Win : MonoBehaviour
         chest.SetActive(true);
         yield return new WaitForSeconds(chestDelay);
         button.SetActive(true);
+
+        Vector3 baseScale = Vector3.one * 0.01f;
+
+        // reset an toàn
+        button.transform.DOKill();
         button.transform.localScale = Vector3.zero;
 
+        // tween xuất hiện
         button.transform
-            .DOScale(Vector3.one, 0.4f)
-            .SetEase(Ease.OutQuad); // mượt, không bật
+            .DOScale(baseScale, 0.9f)
+            .SetEase(Ease.OutBack)
+            .OnComplete(() =>
+            {
+                // loop to nhỏ quanh scale gốc
+                button.transform
+                    .DOScale(baseScale * 1.2f, 0.7f)
+                    .SetEase(Ease.InOutQuad)
+                    .SetLoops(-1, LoopType.Yoyo)
+                    .SetLink(button);
+            });
     }
 }
